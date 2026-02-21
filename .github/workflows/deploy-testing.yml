@@ -29,12 +29,25 @@ jobs:
       - name: Login to ACR
         run: az acr login --name ${{ env.AZURE_CONTAINER_REGISTRY }}
 
+      - name: Enable ACR admin
+        run: az acr update --name ${{ env.AZURE_CONTAINER_REGISTRY }} --admin-enabled true
+
       - name: Build and push Docker image
         run: |
           docker build -t ${{ env.REGISTRY_URL }}/${{ env.IMAGE_NAME }}:${{ github.sha }} .
           docker tag ${{ env.REGISTRY_URL }}/${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.REGISTRY_URL }}/${{ env.IMAGE_NAME }}:latest
           docker push ${{ env.REGISTRY_URL }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           docker push ${{ env.REGISTRY_URL }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Configure ACR credentials for Container App
+        run: |
+          ACR_PASSWORD=$(az acr credential show --name ${{ env.AZURE_CONTAINER_REGISTRY }} --query "passwords[0].value" -o tsv)
+          az containerapp registry set \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --server ${{ env.REGISTRY_URL }} \
+            --username ${{ env.AZURE_CONTAINER_REGISTRY }} \
+            --password $ACR_PASSWORD
 
       - name: Deploy to Azure Container Apps
         run: |
