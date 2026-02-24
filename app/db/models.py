@@ -210,6 +210,30 @@ class ColivingProperty(Base):
     agent = relationship("Agent", back_populates="properties")
 
 
+class PropPandaLead(Base):
+    """
+    Lead/user record for the PropPanda chatbot.
+    Keyed by email — one record per user regardless of agent.
+    Stores all demographics collected during the conversation.
+    """
+    __tablename__ = 'prop_panda_com_leads'
+
+    id = Column(String, primary_key=True, server_default=func.gen_random_uuid())
+    email = Column(Text, nullable=False, unique=True)
+    name = Column(Text, nullable=True)
+    phone = Column(Text, nullable=True)
+    gender = Column(Text, nullable=True)
+    nationality = Column(Text, nullable=True)
+    profession = Column(Text, nullable=True)
+    age_group = Column(Text, nullable=True)
+    pass_type = Column(Text, nullable=True)
+    agent_id = Column(String, ForeignKey('agent.agent_id', ondelete='SET NULL', onupdate='CASCADE'), nullable=True)
+    session_id = Column(Text, nullable=True)
+    last_target_table = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class ChatHistory(Base):
     """Chat history model for web conversations."""
     __tablename__ = 'chat_history_web'

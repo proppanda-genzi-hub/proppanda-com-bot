@@ -12,7 +12,7 @@ from app.graphs.nodes.generator import generator_node
 from app.graphs.nodes.search_tool import search_node
 from app.graphs.nodes.display_results import display_results_node
 from app.graphs.nodes.clear_memory import clear_memory_node
-from app.graphs.nodes.appointment_manager import appointment_manager_node
+from app.graphs.nodes.load_user_data import load_user_data_node
 
 
 # Helper node for clarification
@@ -31,6 +31,7 @@ workflow.add_node("intelligent_chat", intelligent_chat_node)
 workflow.add_node("capability_check", capability_check_node)
 workflow.add_node("clarification", clarification_node)
 workflow.add_node("clear_memory", clear_memory_node)
+workflow.add_node("load_user_data", load_user_data_node)
 
 # Property Sub-System Nodes
 workflow.add_node("extractor", extractor_node)
@@ -38,7 +39,6 @@ workflow.add_node("decision", decision_node)
 workflow.add_node("generator", generator_node)
 workflow.add_node("search_tool", search_node)
 workflow.add_node("display_results", display_results_node)
-workflow.add_node("appointment_manager", appointment_manager_node)
 
 # 2. Set Entry Point
 workflow.set_entry_point("router")
@@ -48,11 +48,10 @@ workflow.set_entry_point("router")
 def master_route_logic(state: AgentState):
     """Route to appropriate node based on intent."""
     intent = state.get("next_step")
-    active_flow = state.get("active_flow")
-    
-    if intent == "PROPERTY_SEARCH":
-        return "extractor"
-    elif intent == "APPOINTMENT":
+
+    if intent == "LOAD_USER_DATA":
+        return "load_user_data"
+    elif intent == "PROPERTY_SEARCH":
         return "extractor"
     elif intent == "RESET_MEMORY":
         return "clear_memory"
@@ -68,8 +67,8 @@ workflow.add_conditional_edges(
     "router",
     master_route_logic,
     {
+        "load_user_data": "load_user_data",
         "extractor": "extractor",
-        "appointment_manager": "appointment_manager",
         "clear_memory": "clear_memory",
         "capability_check": "capability_check",
         "clarification": "clarification",
@@ -78,18 +77,43 @@ workflow.add_conditional_edges(
 )
 
 
-# 4. Define Memory Clearing Logic
+# 4. Define load_user_data Routing Logic
+def load_user_data_route_logic(state: AgentState):
+    """
+    After load_user_data:
+    - If email was collected → proceed to capability_check
+    - If waiting for email (WAIT_EMAIL) → end turn so user can reply
+    """
+    step = state.get("next_step")
+    if step == "CHECK_CAPABILITY":
+        return "capability_check"
+    else:
+        # WAIT_EMAIL — stop and wait for user to provide their email
+        return "end"
+
+
+workflow.add_conditional_edges(
+    "load_user_data",
+    load_user_data_route_logic,
+    {
+        "capability_check": "capability_check",
+        "end": END
+    }
+)
+
+
+# 5. Define Memory Clearing Logic
 workflow.add_edge("clear_memory", "capability_check")
 
 
-# 5. Define Capability Logic
+# 6. Define Capability Logic
 def capability_route_logic(state: AgentState):
     """Route based on capability check result."""
     step = state.get("next_step")
     if step == "PROPERTY_SEARCH_APPROVED":
-        return "extractor" 
+        return "extractor"
     else:
-        return "end" 
+        return "end"
 
 
 workflow.add_conditional_edges(
@@ -102,36 +126,36 @@ workflow.add_conditional_edges(
 )
 
 
-# 6. Define Extractor Routing Logic
+# 7. Define Extractor Routing Logic
 def extractor_route_logic(state: AgentState):
     """Route based on active flow after extraction."""
-    active_flow = state.get("active_flow")
-    if active_flow == "APPOINTMENT":
-        return "appointment_manager"
-    else:
-        return "decision"
+    # After COLLECT_LEAD extraction active_flow is cleared to None,
+    # but pending_follow_up still holds the question we need to answer.
+    if state.get("pending_follow_up"):
+        return "intelligent_chat"
+    return "decision"
 
 
 workflow.add_conditional_edges(
     "extractor",
     extractor_route_logic,
     {
-        "appointment_manager": "appointment_manager",
+        "intelligent_chat": "intelligent_chat",
         "decision": "decision"
     }
 )
 
 
-# 7. Define Property Loop Logic
+# 8. Define Property Loop Logic
 def property_route_logic(state: AgentState):
     """Route based on property search state."""
     step = state.get("next_step")
-    
+
     if step == "execute_search":
         return "search_tool"
     elif step == "display_results":
         return "display_results"
-    elif step == "check_inventory": 
+    elif step == "check_inventory":
         return "generator"
     else:
         return "generator"
@@ -148,16 +172,15 @@ workflow.add_conditional_edges(
 )
 
 
-# 8. Connect Search Flow
+# 9. Connect Search Flow
 workflow.add_edge("search_tool", "display_results")
 
 
-# 9. End Points
+# 10. End Points
 workflow.add_edge("display_results", END)
 workflow.add_edge("generator", END)
 workflow.add_edge("clarification", END)
 workflow.add_edge("intelligent_chat", END)
-workflow.add_edge("appointment_manager", END)
 
 
 def get_master_graph(checkpointer):

@@ -17,7 +17,8 @@ async def capability_check_node(state: AgentState, config: RunnableConfig):
     # Map Table Names to DB Columns & Human Friendly Names
     service_map = {
         "coliving_property": ("co_living_property", "Co-living Spaces"),
-        "rooms_for_rent": ("rooms_for_rent", "Standard Rooms"),
+        "coliving_rooms":    ("rooms_for_rent",     "Rooms for Rent"),
+        "rooms_for_rent":    ("rooms_for_rent",     "Standard Rooms"),
         "residential_properties_for_rent": ("residential_property_rent", "Whole Unit Rentals"),
         "residential_properties_for_resale": ("residential_property_resale", "Residential Sales"),
         "residential_properties_for_sale_by_developers": ("residential_property_developer", "New Launch Residential"),

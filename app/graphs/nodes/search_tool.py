@@ -21,7 +21,8 @@ async def search_node(state: AgentState, config: RunnableConfig):
     agent_id = state["agent_id"]
     filters = state["filters"]
     filter_dict = filters.model_dump() if filters else {}
-    
+    table_name = state.get("target_table") or "coliving_property"
+
     tool = PropertySearchTool(db, location_iq_key=os.getenv("LOCATION_IQ_KEY"))
     
     properties = []
@@ -39,11 +40,12 @@ async def search_node(state: AgentState, config: RunnableConfig):
     if is_flexible_location or not location_str:
         logger.info(f"🌍 Flexible location detected: '{location_str}' - Searching ALL properties")
         query_text, params = build_property_query(
-            filters=filter_dict, 
-            agent_id=agent_id, 
-            lat=None, 
+            filters=filter_dict,
+            agent_id=agent_id,
+            lat=None,
             lng=None,
-            text_search_term=None
+            text_search_term=None,
+            table_name=table_name
         )
         
         final_query_str = str(query_text).replace("LIMIT 5", "LIMIT 10")
@@ -68,11 +70,12 @@ async def search_node(state: AgentState, config: RunnableConfig):
         
         if len(clean_loc) > 2:
             query_text, params = build_property_query(
-                filters=filter_dict, 
-                agent_id=agent_id, 
-                lat=None, 
-                lng=None, 
-                text_search_term=clean_loc
+                filters=filter_dict,
+                agent_id=agent_id,
+                lat=None,
+                lng=None,
+                text_search_term=clean_loc,
+                table_name=table_name
             )
             
             final_query_str = str(query_text).replace("LIMIT 5", "LIMIT 10")
@@ -92,10 +95,11 @@ async def search_node(state: AgentState, config: RunnableConfig):
             lat, lng = coords
             
             query_text, params = build_property_query(
-                filters=filter_dict, 
-                agent_id=agent_id, 
-                lat=lat, 
-                lng=lng
+                filters=filter_dict,
+                agent_id=agent_id,
+                lat=lat,
+                lng=lng,
+                table_name=table_name
             )
             
             final_query_str = str(query_text).replace("LIMIT 5", "LIMIT 10")
@@ -106,11 +110,12 @@ async def search_node(state: AgentState, config: RunnableConfig):
             # FALLBACK: Search all properties if geocoding fails
             # FALLBACK: Search all properties if geocoding fails
             query_text, params = build_property_query(
-                filters=filter_dict, 
-                agent_id=agent_id, 
-                lat=None, 
+                filters=filter_dict,
+                agent_id=agent_id,
+                lat=None,
                 lng=None,
-                text_search_term=None
+                text_search_term=None,
+                table_name=table_name
             )
             final_query_str = str(query_text).replace("LIMIT 5", "LIMIT 10")
             result = await db.execute(text(final_query_str), params)

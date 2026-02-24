@@ -100,9 +100,11 @@ async def appointment_manager_node(state: AgentState, config: RunnableConfig):
         }
 
     if not appt.get("lease_months"):
+        _target_table = state.get("target_table", "")
+        _min_lease = 12 if "residential" in _target_table else 3
         return {
             **state_update,
-            "messages": [AIMessage(content="Got it! How long are you planning to stay? (We need at least a 3-month minimum.)")]
+            "messages": [AIMessage(content=f"Got it! How long are you planning to stay? (Minimum lease for this property type is {_min_lease} months.)")]
         }
 
     # 3. COLLECT PREFERENCES
